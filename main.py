@@ -20,18 +20,15 @@ if __name__ == "__main__":
     # Détection et classification des objets dans l'image
     class_counts, detected_objects = pipeline.detect_and_classify_objects()
 
-    # Comptage des objets détectés
-    counts = pipeline.count_objects(class_counts)
-
     # Mesure du temps d'exécution
     end_time = time.time()
     print(f"Temps d'exécution: {end_time - start_time} secondes")
 
     # Affichage des résultats
-    print("Comptage des objets :", counts)
+    print("Comptage des objets :", class_counts)
     # Affichage des objets détectés
     print("Objets détectés :", len(detected_objects))
     pipeline.display_results(class_counts, detected_objects)
 
     # Évaluation de la performance (précision, rappel, etc.)
-    evaluate_performance(class_counts, counts)
+    evaluate_performance(class_counts, class_counts)

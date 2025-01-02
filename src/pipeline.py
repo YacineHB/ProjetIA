@@ -73,7 +73,7 @@ class ObjectDetectionPipeline:
             # Ajouter les coordonnées et la classe prédite pour afficher un rectangle plus tard
             detected_objects.append((x, y, w, h, predicted_class))
 
-        return class_counts, detected_objects
+        return dict(sorted(class_counts.items())), detected_objects
 
     def display_results(self, class_counts, detected_objects):
         """Afficher l'image avec la classe prédite et les rectangles autour des objets détectés."""
@@ -94,8 +94,3 @@ class ObjectDetectionPipeline:
         plt.title(f"Comptage des objets: {class_counts}")
         plt.axis('off')
         plt.show()
-
-    def count_objects(self, class_counts):
-        """Retourner le comptage des objets détectés."""
-
-        return class_counts
