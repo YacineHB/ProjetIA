@@ -15,26 +15,62 @@ class BayesianClassifier:
 
     def extract_features(self, image):
         """Extraire les caractéristiques d'une image : détection des contours et normalisation."""
-        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        # Vérifier si l'image est déjà en niveaux de gris
+        if len(image.shape) == 3 and image.shape[2] == 3:  # Image couleur (3 canaux)
+            gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        else:
+            gray_image = image  # Si l'image est déjà en niveaux de gris, on l'utilise telle quelle
 
-        # Seuillage pour binariser l'image (légèrement inversé pour améliorer la détection)
-        _, binary_image = cv2.threshold(gray_image, 127, 255, cv2.THRESH_BINARY_INV)
+        # Seuillage adaptatif pour mieux gérer les variations de luminosité
+        binary_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
+                                            cv2.THRESH_BINARY_INV, 11, 2)
 
         # Trouver les contours dans l'image binarisée
         contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        # Extraire la caractéristique de chaque contour : utilisation de la zone de chaque contour
         features = []
         for contour in contours:
+            if cv2.contourArea(contour) < 50:  # Ignorer les petits contours (bruit)
+                continue
+
             x, y, w, h = cv2.boundingRect(contour)
             letter_image = gray_image[y:y + h, x:x + w]
-            resized_letter = cv2.resize(letter_image, (28, 28))  # Redimensionner à une taille fixe
-            features.append(resized_letter.flatten())  # Aplatir l'image pour en faire un vecteur
+            letter_image = cv2.resize(letter_image, (28, 28))  # Redimensionner à une taille fixe
+
+            # Extraction des caractéristiques à partir de l'image redimensionnée
+            # Utilisation de l'histogramme des gradients (HOG) sans utiliser `skimage`
+            gradients_x = cv2.Sobel(letter_image, cv2.CV_64F, 1, 0, ksize=3)
+            gradients_y = cv2.Sobel(letter_image, cv2.CV_64F, 0, 1, ksize=3)
+
+            # Calcul de l'histogramme des gradients
+            magnitude, angle = cv2.cartToPolar(gradients_x, gradients_y, angleInDegrees=True)
+
+            # Diviser l'image en cellules de 8x8 pixels pour extraire l'histogramme
+            cell_size = 8
+            cells_x = letter_image.shape[1] // cell_size
+            cells_y = letter_image.shape[0] // cell_size
+            histograms = []
+
+            for y_cell in range(cells_y):
+                for x_cell in range(cells_x):
+                    # Définir la région de la cellule
+                    cell_magnitude = magnitude[y_cell * cell_size:(y_cell + 1) * cell_size,
+                                               x_cell * cell_size:(x_cell + 1) * cell_size]
+                    cell_angle = angle[y_cell * cell_size:(y_cell + 1) * cell_size,
+                                       x_cell * cell_size:(x_cell + 1) * cell_size]
+
+                    # Calculer un histogramme des orientations des gradients dans la cellule
+                    hist, _ = np.histogram(cell_angle, bins=9, range=(0, 180), weights=cell_magnitude)
+                    histograms.append(hist)
+
+            # Concaténer les histogrammes pour obtenir les caractéristiques globales
+            features.append(np.array(histograms).flatten())
+
         features = np.array(features)
 
         # Normalisation des caractéristiques pour chaque contour (lettre)
-        if len(features) > 0:
-            features = features / np.linalg.norm(features, axis=1, keepdims=True)
+        norms = np.linalg.norm(features, axis=1, keepdims=True)
+        features = features / np.where(norms > 1e-6, norms, 1)  # Remplacer les normes nulles par 1
 
         return features
 
@@ -131,7 +167,6 @@ class BayesianClassifier:
 
         accuracy = correct / total if total > 0 else 0
         return accuracy
-
 
     def visualize_model(self):
         """Visualiser les moyennes des caractéristiques pour chaque classe"""

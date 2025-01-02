@@ -1,29 +1,28 @@
 from src.pipeline import ObjectDetectionPipeline
 from src.utils import evaluate_performance
 import time
+import torch
 
 if __name__ == "__main__":
     image_path = "data/plans/page.png"  # Image à traiter
-    catalog_path = "data/catalogue"  # Dossier contenant les objets à rechercher
 
     # Initialisation du pipeline de détection d'objets
-    pipeline = ObjectDetectionPipeline(image_path, catalog_path)
+    pipeline = ObjectDetectionPipeline(image_path)
 
-    # Chargement de l'image et du catalogue
+    # Chargement du modèle
+    pipeline.load_model("models/bayesian_model.pth")  # Modèle entraîné que vous avez sauvegardé
+
+    # Chargement de l'image
     pipeline.load_image()
-    pipeline.load_catalog()
-
-    # Prétraitement de l'image
-    processed_image = pipeline.preprocess_image()
 
     # Mesure de la performance avant la détection
     start_time = time.time()
 
-    # Détection des objets dans l'image
-    found_locations = pipeline.detect_objects(processed_image)
+    # Détection et classification des objets dans l'image
+    class_counts, detected_objects = pipeline.detect_and_classify_objects()
 
     # Comptage des objets détectés
-    counts = pipeline.count_objects(found_locations)
+    counts = pipeline.count_objects(class_counts)
 
     # Mesure du temps d'exécution
     end_time = time.time()
@@ -31,7 +30,9 @@ if __name__ == "__main__":
 
     # Affichage des résultats
     print("Comptage des objets :", counts)
-    pipeline.display_results(found_locations)
+    # Affichage des objets détectés
+    print("Objets détectés :", len(detected_objects))
+    pipeline.display_results(class_counts, detected_objects)
 
     # Évaluation de la performance (précision, rappel, etc.)
-    evaluate_performance(found_locations, counts)
+    evaluate_performance(class_counts, counts)

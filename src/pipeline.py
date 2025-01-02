@@ -1,14 +1,27 @@
 import cv2
-import numpy as np
+import torch
 import os
-import matplotlib.pyplot as plt
+import numpy as np
+from torchvision import transforms
+from matplotlib import pyplot as plt
+from src.models.bayesien import BayesianClassifier
+from collections import defaultdict
 
 class ObjectDetectionPipeline:
-    def __init__(self, image_path, catalog_path):
+    def __init__(self, image_path, model=None):
         self.image_path = image_path
-        self.catalog_path = catalog_path
         self.image = None
-        self.catalog_images = {}
+        self.model = model  # Le modèle personnalisé à utiliser
+
+    def load_model(self, model_path):
+        """Charger le modèle pré-entrainé ou le classifieur bayésien."""
+        if os.path.exists(model_path):
+            # Charger un modèle bayésien si le chemin existe
+            self.model = BayesianClassifier()  # Créer une instance du classifieur bayésien
+            self.model.load_model(model_path)  # Charger les paramètres du modèle bayésien
+            print(f"Modèle bayésien chargé depuis {model_path}")
+        else:
+            print(f"Aucun modèle trouvé à {model_path}. Un nouveau modèle sera créé.")
 
     def load_image(self):
         """Charge l'image à traiter."""
@@ -17,69 +30,73 @@ class ObjectDetectionPipeline:
             raise FileNotFoundError(f"L'image {self.image_path} est introuvable.")
         return self.image
 
-    def load_catalog(self):
-        """Charge les objets à rechercher dans le catalogue."""
-        for file_name in os.listdir(self.catalog_path):
-            if file_name.endswith('.png') or file_name.endswith('.jpg'):
-                object_image = cv2.imread(os.path.join(self.catalog_path, file_name), cv2.IMREAD_GRAYSCALE)
-                self.catalog_images[file_name] = object_image
-
     def preprocess_image(self):
-        """Convertir l'image en niveaux de gris tout en préservant la qualité."""
-        return cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
+        """Prétraiter l'image pour l'inférence."""
+        # Convertir l'image en niveaux de gris pour la détection de caractéristiques par le classifieur bayésien
+        image_gray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
+        return image_gray
 
-    def rotate_image(self, image, angle):
-        """Effectuer une rotation de l'image."""
-        if angle == 0:
-            return image
-        elif angle == 90:
-            return cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
-        elif angle == 180:
-            return cv2.rotate(image, cv2.ROTATE_180)
-        elif angle == 270:
-            return cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+    def detect_and_classify_objects(self):
+        """Détecter et classer les objets dans l'image à l'aide du modèle."""
+        if self.model is None:
+            print("Aucun modèle de classification fourni.")
+            return {}
 
-    def detect_objects(self, processed_image):
-        """Cherche les objets dans l'image à l'aide de template matching."""
-        found_locations = {}
+        # Prétraiter l'image pour l'inférence (conversion en niveaux de gris)
+        processed_image = self.preprocess_image()
 
-        for obj_name, object_image in self.catalog_images.items():
-            locations = []
-            object_height, object_width = object_image.shape
+        # Seuillage pour binariser l'image (légèrement inversé pour améliorer la détection)
+        _, binary_image = cv2.threshold(processed_image, 127, 255, cv2.THRESH_BINARY_INV)
 
-            for angle in [0, 90, 180, 270]:
-                rotated_object = self.rotate_image(object_image, angle)
-                result = cv2.matchTemplate(processed_image, rotated_object, cv2.TM_CCOEFF_NORMED)
-                threshold = 0.7
-                loc = np.where(result >= threshold)
+        # Trouver les contours dans l'image binarisée
+        contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-                for pt in zip(*loc[::-1]):
-                    locations.append((pt[0], pt[1], object_width, object_height))
+        # Dictionnaire pour stocker les comptages des classes détectées
+        class_counts = defaultdict(int)
+        detected_objects = []
 
-            found_locations[obj_name] = locations
+        for contour in contours:
+            # Ignorer les petits contours (bruit)
+            if cv2.contourArea(contour) < 50:  # Limiter à des zones suffisamment grandes
+                continue
 
-        return found_locations
+            x, y, w, h = cv2.boundingRect(contour)
+            letter_image = processed_image[y:y + h, x:x + w]
+            resized_letter = cv2.resize(letter_image, (28, 28))  # Redimensionner à une taille fixe
 
-    def display_results(self, found_locations):
-        """Afficher les objets détectés sur l'image sans altérer la qualité de l'image."""
+            # Prédiction avec le modèle bayésien
+            predicted_class = self.model.predict(resized_letter)
+            print(f"Classe prédite: {predicted_class}")
+
+            # Incrémenter le comptage de la classe prédite
+            class_counts[predicted_class] += 1
+
+            # Ajouter les coordonnées et la classe prédite pour afficher un rectangle plus tard
+            detected_objects.append((x, y, w, h, predicted_class))
+
+        return class_counts, detected_objects
+
+    def display_results(self, class_counts, detected_objects):
+        """Afficher l'image avec la classe prédite et les rectangles autour des objets détectés."""
         image_copy = self.image.copy()
-        color_map = {obj_name: (np.random.randint(0, 256), np.random.randint(0, 256), np.random.randint(0, 256))
-                     for obj_name in found_locations.keys()}
 
-        for obj_name, locations in found_locations.items():
-            for (x, y, w, h) in locations:
-                color = color_map[obj_name]
-                cv2.rectangle(image_copy, (x, y), (x + w, y + h), color, 2)
+        # Affichage des rectangles autour des lettres et des classes
+        for (x, y, w, h, predicted_class) in detected_objects:
+            # Dessiner le rectangle autour de l'objet
+            cv2.rectangle(image_copy, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
+            # Afficher la classe prédite sur l'image
+            cv2.putText(image_copy, f"{predicted_class}", (x, y - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+
+        # Afficher l'image avec les résultats
         fig = plt.figure(figsize=(image_copy.shape[1] / 100, image_copy.shape[0] / 100))
         plt.imshow(cv2.cvtColor(image_copy, cv2.COLOR_BGR2RGB))
-        plt.title("Objects Detected")
+        plt.title(f"Comptage des objets: {class_counts}")
         plt.axis('off')
         plt.show()
 
-    def count_objects(self, found_locations):
-        """Compter les objets détectés pour chaque type."""
-        counts = {}
-        for obj_name, locations in found_locations.items():
-            counts[obj_name] = len(locations)
-        return counts
+    def count_objects(self, class_counts):
+        """Retourner le comptage des objets détectés."""
+
+        return class_counts
