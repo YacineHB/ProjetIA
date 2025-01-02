@@ -1,4 +1,4 @@
-from src.models.bayesien import BayesianClassifier
+from src.classifiers.bayesien import BayesianClassifier
 
 if __name__ == "__main__":
     catalog_path = "data/catalogue"  # Données d'entraînement (sous-dossiers pour chaque classe)

@@ -4,7 +4,7 @@ import os
 import numpy as np
 from torchvision import transforms
 from matplotlib import pyplot as plt
-from src.models.bayesien import BayesianClassifier
+from src.classifiers.bayesien import BayesianClassifier
 from collections import defaultdict
 
 class ObjectDetectionPipeline:
