@@ -23,7 +23,7 @@ class BayesianClassifier:
 
         # Seuillage adaptatif pour mieux gérer les variations de luminosité
         binary_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
-                                            cv2.THRESH_BINARY_INV, 11, 2)
+                                             cv2.THRESH_BINARY_INV, 11, 2)
 
         # Trouver les contours dans l'image binarisée
         contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -55,9 +55,9 @@ class BayesianClassifier:
                 for x_cell in range(cells_x):
                     # Définir la région de la cellule
                     cell_magnitude = magnitude[y_cell * cell_size:(y_cell + 1) * cell_size,
-                                               x_cell * cell_size:(x_cell + 1) * cell_size]
+                                     x_cell * cell_size:(x_cell + 1) * cell_size]
                     cell_angle = angle[y_cell * cell_size:(y_cell + 1) * cell_size,
-                                       x_cell * cell_size:(x_cell + 1) * cell_size]
+                                 x_cell * cell_size:(x_cell + 1) * cell_size]
 
                     # Calculer un histogramme des orientations des gradients dans la cellule
                     hist, _ = np.histogram(cell_angle, bins=9, range=(0, 180), weights=cell_magnitude)
@@ -68,8 +68,12 @@ class BayesianClassifier:
 
         features = np.array(features)
 
+        # Si nous avons un seul vecteur de caractéristiques, assurez-vous qu'il est 2D
+        if features.ndim == 1:
+            features = features.reshape(1, -1)  # Transformer en tableau 2D avec 1 ligne
+
         # Normalisation des caractéristiques pour chaque contour (lettre)
-        norms = np.linalg.norm(features, axis=1, keepdims=True)
+        norms = np.linalg.norm(features, axis=1, keepdims=True)  # Calcul de la norme sur chaque ligne (chaque image)
         features = features / np.where(norms > 1e-6, norms, 1)  # Remplacer les normes nulles par 1
 
         return features
@@ -167,6 +171,7 @@ class BayesianClassifier:
 
         accuracy = correct / total if total > 0 else 0
         return accuracy
+
 
     def visualize_model(self):
         """Visualiser les moyennes des caractéristiques pour chaque classe"""

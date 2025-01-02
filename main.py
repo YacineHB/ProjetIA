@@ -1,7 +1,6 @@
 from src.pipeline import ObjectDetectionPipeline
 from src.utils import evaluate_performance
 import time
-import torch
 
 if __name__ == "__main__":
     image_path = "data/plans/page.png"  # Image à traiter

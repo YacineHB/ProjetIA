@@ -66,7 +66,6 @@ class ObjectDetectionPipeline:
 
             # Prédiction avec le modèle bayésien
             predicted_class = self.model.predict(resized_letter)
-            print(f"Classe prédite: {predicted_class}")
 
             # Incrémenter le comptage de la classe prédite
             class_counts[predicted_class] += 1
