@@ -12,9 +12,16 @@ class BayesianClassifier:
         self.feature_variances = {}
         self.class_priors = {}
         self.classes = []
+        self.hog = cv2.HOGDescriptor(
+            _winSize=(28, 28),  # Taille de la fenêtre (même que l'image redimensionnée)
+            _blockSize=(8, 8),  # Taille des blocs
+            _blockStride=(4, 4),  # Pas entre les blocs
+            _cellSize=(8, 8),  # Taille des cellules
+            _nbins=9  # Nombre de bins pour l'histogramme des orientations
+        )
 
     def extract_features(self, image):
-        """Extraire les caractéristiques d'une image : détection des contours et normalisation."""
+        """Extraire les caractéristiques HOG d'une image."""
         # Vérifier si l'image est déjà en niveaux de gris
         if len(image.shape) == 3 and image.shape[2] == 3:  # Image couleur (3 canaux)
             gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -37,40 +44,13 @@ class BayesianClassifier:
             letter_image = gray_image[y:y + h, x:x + w]
             letter_image = cv2.resize(letter_image, (28, 28))  # Redimensionner à une taille fixe
 
-            # Extraction des caractéristiques à partir de l'image redimensionnée
-            # Utilisation de l'histogramme des gradients (HOG) sans utiliser `skimage`
-            gradients_x = cv2.Sobel(letter_image, cv2.CV_64F, 1, 0, ksize=3)
-            gradients_y = cv2.Sobel(letter_image, cv2.CV_64F, 0, 1, ksize=3)
+            # Extraire les caractéristiques HOG
+            hog_features = self.hog.compute(letter_image)
 
-            # Calcul de l'histogramme des gradients
-            magnitude, angle = cv2.cartToPolar(gradients_x, gradients_y, angleInDegrees=True)
-
-            # Diviser l'image en cellules de 8x8 pixels pour extraire l'histogramme
-            cell_size = 8
-            cells_x = letter_image.shape[1] // cell_size
-            cells_y = letter_image.shape[0] // cell_size
-            histograms = []
-
-            for y_cell in range(cells_y):
-                for x_cell in range(cells_x):
-                    # Définir la région de la cellule
-                    cell_magnitude = magnitude[y_cell * cell_size:(y_cell + 1) * cell_size,
-                                     x_cell * cell_size:(x_cell + 1) * cell_size]
-                    cell_angle = angle[y_cell * cell_size:(y_cell + 1) * cell_size,
-                                 x_cell * cell_size:(x_cell + 1) * cell_size]
-
-                    # Calculer un histogramme des orientations des gradients dans la cellule
-                    hist, _ = np.histogram(cell_angle, bins=9, range=(0, 180), weights=cell_magnitude)
-                    histograms.append(hist)
-
-            # Concaténer les histogrammes pour obtenir les caractéristiques globales
-            features.append(np.array(histograms).flatten())
+            # Ajouter les caractéristiques au tableau global
+            features.append(hog_features.flatten())
 
         features = np.array(features)
-
-        # Si nous avons un seul vecteur de caractéristiques, assurez-vous qu'il est 2D
-        if features.ndim == 1:
-            features = features.reshape(1, -1)  # Transformer en tableau 2D avec 1 ligne
 
         # Normalisation des caractéristiques pour chaque contour (lettre)
         norms = np.linalg.norm(features, axis=1, keepdims=True)  # Calcul de la norme sur chaque ligne (chaque image)
