@@ -8,7 +8,7 @@ def evaluate_performance(found_locations, counts):
     # Par exemple, en comparant les résultats avec une vérité terrain (ici simulée)
 
     # Exemple : performance de précision / rappel fictifs pour chaque objet
-    true_counts = {'a.png': 5, 'b.png': 3}  # Exemple de vérité terrain
+    true_counts = {'a_1.png': 5, 'b_1.png': 3}  # Exemple de vérité terrain
     precision = {}
     recall = {}
 
