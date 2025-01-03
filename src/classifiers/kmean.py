@@ -141,17 +141,49 @@ class KMeansClassifier(Classifier):
             print(f"Aucun modèle trouvé à {model_path}. Un nouveau modèle sera créé.")
 
     def visualize_model(self):
-        """Visualiser les centres des clusters."""
-        if self.centroids is None:
-            print("Centroids not available for visualization.")
+        """Visualiser les centroïdes des clusters dans un espace 2D avec les noms des classes."""
+        if self.centroids is None or not self.classes:
+            print("Centroids or class names not available for visualization.")
             return
 
-        plt.figure(figsize=(10, 4))
-        plt.title(f'Centroids of Clusters')
-        for i, centroid in enumerate(self.centroids):
-            plt.plot(centroid.numpy(), label=f'Cluster {i}')
-        plt.xlabel('Index des caractéristiques')
-        plt.ylabel('Valeur moyenne')
+        # Centrer les centroïdes pour la réduction dimensionnelle
+        centroids_np = self.centroids.numpy()
+        centroids_centered = centroids_np - np.mean(centroids_np, axis=0)
+
+        # Calcul de la matrice de covariance
+        covariance_matrix = np.cov(centroids_centered, rowvar=False)
+
+        # Calcul des valeurs propres et vecteurs propres
+        eigenvalues, eigenvectors = np.linalg.eigh(covariance_matrix)
+
+        # Trier par ordre décroissant des valeurs propres
+        sorted_indices = np.argsort(eigenvalues)[::-1]
+        eigenvectors = eigenvectors[:, sorted_indices[:2]]
+
+        # Réduction dimensionnelle à 2 dimensions
+        reduced_centroids = np.dot(centroids_centered, eigenvectors)
+
+        # Visualiser les centroïdes en 2D
+        plt.figure(figsize=(8, 6))
+        plt.scatter(reduced_centroids[:, 0], reduced_centroids[:, 1], c='red', marker='*', s=200, label='Centroids')
+
+        # Annoter avec les noms des classes
+        for i, coord in enumerate(reduced_centroids):
+            class_name = self.classes[i] if i < len(self.classes) else f"Unknown {i}"
+            if class_name[-1] == "_":
+                class_name = class_name.split("_")[0].upper()
+            else:
+                class_name = class_name.lower()
+            plt.text(coord[0], coord[1], class_name, fontsize=12, ha='right')
+
+        plt.title('2D Visualization of Centroids')
+        plt.xlabel('PCA Dimension 1')
+        plt.ylabel('PCA Dimension 2')
+        plt.axhline(0, color='gray', linestyle='--', linewidth=0.5)
+        plt.axvline(0, color='gray', linestyle='--', linewidth=0.5)
         plt.legend()
         plt.grid(True)
         plt.show()
+
+
+
