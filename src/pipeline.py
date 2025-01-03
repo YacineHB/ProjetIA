@@ -75,10 +75,11 @@ class ObjectDetectionPipeline:
 
     def display_results(self, class_counts, detected_objects):
         """Afficher les résultats de la détection et classification avec la même résolution que l'image d'origine."""
-        self.display_image_with_classes(class_counts, detected_objects)
-        self.display_image_with_annotations(class_counts, detected_objects)
+        self.display_image_with_classes(detected_objects)
+        self.display_image_with_annotations(detected_objects)
+        self.display_classes_count(class_counts)
 
-    def display_image_with_classes(self, class_counts, detected_objects):
+    def display_image_with_classes(self, detected_objects):
         """Afficher l'image avec les classes prédites."""
         image_with_classes_only = self.image.copy()  # Copie de l'image d'origine
 
@@ -111,7 +112,7 @@ class ObjectDetectionPipeline:
         plt.axis('off')  # Désactiver les axes
         plt.show()  # Afficher l'image
 
-    def display_image_with_annotations(self, class_counts, detected_objects):
+    def display_image_with_annotations(self, detected_objects):
         """Afficher l'image avec les annotations (rectangles et textes)."""
         image_with_annotations = self.image.copy()  # Copie de l'image d'origine
         for (x, y, w, h, predicted_class) in detected_objects:
@@ -134,6 +135,16 @@ class ObjectDetectionPipeline:
         plt.imshow(cv2.cvtColor(image_with_annotations, cv2.COLOR_BGR2RGB))
         plt.axis('off')  # Désactiver les axes
         plt.show()  # Afficher l'image
+
+    def display_classes_count(self, class_counts):
+        """Afficher le nombre d'objets détectés par classe."""
+        # afficher les classes prédites et le nombre de fois qu'elles apparaissent
+        plt.figure(figsize=(10, 5))
+        plt.bar(class_counts.keys(), class_counts.values())
+        plt.xlabel("Classes")
+        plt.ylabel("Nombre de lettres")
+        plt.title("Classes détectées et leur nombre")
+        plt.show()
 
 
 
