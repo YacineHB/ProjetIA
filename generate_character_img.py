@@ -40,7 +40,8 @@ def generate_character_images(output_folder, font_path, font_size, image_size):
 
 # Paramètres
 output_folder = "output_characters"  # Dossier racine pour enregistrer les images
-font_path = "arial.ttf"  # Chemin vers une police TrueType (remplacez par une police installée)
+#Cambria font
+font_path = "C:/Windows/Fonts/cambriab.ttf"  # Chemin de la police TrueType
 font_size = 28  # Taille de la police
 image_size = (25, 25)  # Dimensions des images (pixels)
 

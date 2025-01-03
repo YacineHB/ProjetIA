@@ -1,10 +1,10 @@
 import cv2
-import torch
 import os
-import numpy as np
-from torchvision import transforms
 from matplotlib import pyplot as plt
+from tensorboard.notebook import display
+
 from src.classifiers.bayesien import BayesianClassifier
+from src.utils import enlarge_contour
 from collections import defaultdict
 
 class ObjectDetectionPipeline:
@@ -60,7 +60,7 @@ class ObjectDetectionPipeline:
             if cv2.contourArea(contour) < 50:  # Limiter à des zones suffisamment grandes
                 continue
 
-            x, y, w, h = cv2.boundingRect(contour)
+            x, y, w, h = enlarge_contour(cv2.boundingRect(contour), top=15, left=2, right=2)
             letter_image = processed_image[y:y + h, x:x + w]
             resized_letter = cv2.resize(letter_image, (28, 28))  # Redimensionner à une taille fixe
 
@@ -76,21 +76,69 @@ class ObjectDetectionPipeline:
         return dict(sorted(class_counts.items())), detected_objects
 
     def display_results(self, class_counts, detected_objects):
-        """Afficher l'image avec la classe prédite et les rectangles autour des objets détectés."""
-        image_copy = self.image.copy()
+        """Afficher les résultats de la détection et classification avec la même résolution que l'image d'origine."""
+        self.display_image_with_classes(class_counts, detected_objects)
+        self.display_image_with_annotations(class_counts, detected_objects)
 
-        # Affichage des rectangles autour des lettres et des classes
+        print("Les images ont été sauvegardées avec succès.")
+
+    def display_image_with_classes(self, class_counts, detected_objects):
+        """Afficher l'image avec les classes prédites."""
+        image_with_classes_only = self.image.copy()  # Copie de l'image d'origine
+
+        # Boucle sur les objets détectés pour afficher les rectangles et les textes
         for (x, y, w, h, predicted_class) in detected_objects:
-            # Dessiner le rectangle autour de l'objet
-            cv2.rectangle(image_copy, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            # Vérifier si la classe prédite a "_" à la fin
+            if predicted_class[-1] == "_":
+                text = predicted_class.split("_")[0].upper()
+            else:
+                text = predicted_class.lower()
 
-            # Afficher la classe prédite sur l'image
-            cv2.putText(image_copy, f"{predicted_class}", (x, y - 10),
+            # --- Pour l'image avec seulement les classes ---
+            # Effacer l'ancienne lettre en remplissant la région avec du blanc (ou autre couleur de fond)
+            cv2.rectangle(image_with_classes_only, (x, y), (x + w, y + h), (255, 255, 255), -1)
+
+            # Calculer la position pour centrer le texte dans la région de la lettre
+            font_scale = 0.7
+            font_thickness = 2
+            text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_thickness)[0]
+            text_x = x + (w - text_size[0]) // 2
+            text_y = y + (h + text_size[1]) // 2
+
+            # Ajouter le texte de la classe prédite
+            cv2.putText(image_with_classes_only, text, (text_x, text_y),
+                        cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 0, 0), font_thickness)
+
+        # Affichage de l'image avec les classes à la même résolution que l'image originale
+        fig = plt.figure(figsize=(image_with_classes_only.shape[1] / 100, image_with_classes_only.shape[0] / 100))
+        plt.imshow(cv2.cvtColor(image_with_classes_only, cv2.COLOR_BGR2RGB))
+        plt.axis('off')  # Désactiver les axes
+        plt.show()  # Afficher l'image
+
+    def display_image_with_annotations(self, class_counts, detected_objects):
+        """Afficher l'image avec les annotations (rectangles et textes)."""
+        image_with_annotations = self.image.copy()  # Copie de l'image d'origine
+        for (x, y, w, h, predicted_class) in detected_objects:
+            # Vérifier si la classe prédite a "_" à la fin
+            if predicted_class[-1] == "_":
+                text = predicted_class.split("_")[0].upper()
+            else:
+                text = predicted_class.lower()
+
+            # --- Pour l'image avec annotations ---
+            # Dessiner le rectangle autour de la lettre détectée
+            cv2.rectangle(image_with_annotations, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+            # Ajouter le texte à côté de la lettre
+            cv2.putText(image_with_annotations, text, (x, y - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
 
-        # Afficher l'image avec les résultats
-        fig = plt.figure(figsize=(image_copy.shape[1] / 100, image_copy.shape[0] / 100))
-        plt.imshow(cv2.cvtColor(image_copy, cv2.COLOR_BGR2RGB))
-        plt.title(f"Comptage des objets: {class_counts}")
-        plt.axis('off')
-        plt.show()
+        # Affichage de l'image avec les annotations à la même résolution que l'image originale
+        fig = plt.figure(figsize=(image_with_annotations.shape[1] / 100, image_with_annotations.shape[0] / 100))
+        plt.imshow(cv2.cvtColor(image_with_annotations, cv2.COLOR_BGR2RGB))
+        plt.axis('off')  # Désactiver les axes
+        plt.show()  # Afficher l'image
+
+
+
+

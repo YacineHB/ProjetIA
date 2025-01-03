@@ -67,3 +67,23 @@ def evaluate_performance(found_locations, counts):
     print("Précision et Rappel :")
     for obj_name in counts:
         print(f"{obj_name}: Précision={precision.get(obj_name, 0)}, Rappel={recall.get(obj_name, 0)}, Find={find.get(obj_name,0)}, Vrai={true.get(obj_name, 0)}")
+
+def enlarge_contour(dimension, top=0, bottom=0, left=0, right=0):
+    """
+    Agrandir un contour donné de quelques pixels dans les directions spécifiées.
+
+    :param x: Coordonnée x du contour
+    :param y: Coordonnée y du contour
+    :param w: Largeur du contour
+    :param h: Hauteur du contour
+    :param top: Pixels à ajouter vers le haut
+    :param bottom: Pixels à ajouter vers le bas
+    :param left: Pixels à ajouter à gauche
+    :param right: Pixels à ajouter à droite
+    :return: Nouvelle boîte englobante agrandie (x, y, w, h)
+    """
+    x_new = max(0, dimension[0] - left)
+    y_new = max(0, dimension[1] - top)
+    w_new = dimension[2] + left + right
+    h_new = dimension[3] + top + bottom
+    return x_new, y_new, w_new, h_new
