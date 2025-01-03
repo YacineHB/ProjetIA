@@ -139,6 +139,8 @@ class BayesianClassifier(Classifier):
             "class_priors": self.class_priors,
             "classes": self.classes
         }
+        if not os.path.exists(os.path.dirname(model_path)):
+            os.makedirs(os.path.dirname(model_path))
         torch.save(model_data, model_path)
         print(f"Model saved to {model_path}")
 
