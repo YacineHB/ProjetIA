@@ -94,19 +94,41 @@ class BayesianClassifier(Classifier):
 
     def predict(self, image):
         """Prédire la classe d'une image en fonction des caractéristiques extraites."""
-        features = self.extract_features(image)
+        # Poids des rotations
+        rotation_weights = {
+            0: 1.0,  # Importance maximale pour l'angle 0
+            90: 0.5,  # Réduction de poids pour les autres angles
+            180: 0.5,
+            270: 0.5
+        }
+
         posteriors = {}
 
-        for class_name in self.classes:
-            # Calcul de la vraisemblance (log-vraisemblance)
-            mean = self.feature_means[class_name]
-            variance = self.feature_variances[class_name]
-            likelihood = -0.5 * np.sum(((features - mean) ** 2) / variance + np.log(2 * np.pi * variance))
-            # Ajouter la probabilité a priori (log-prior)
-            posterior = likelihood + np.log(self.class_priors[class_name])
-            posteriors[class_name] = posterior
+        for rotation, weight in rotation_weights.items():  # Parcourir les rotations et leurs poids
+            k = rotation // 90  # Convertir degrés en nombre de rotations pour np.rot90
+            rotated_image = np.rot90(image, k)
+            features = self.extract_features(rotated_image)
 
-        # Retourner la classe ayant la plus haute probabilité a posteriori
+            for class_name in self.classes:
+                mean = self.feature_means[class_name]
+                variance = self.feature_variances[class_name]
+                prior = self.class_priors[class_name]
+
+                # Calculer la vraisemblance logarithmique (log de la densité gaussienne)
+                likelihood = -0.5 * np.sum(((features - mean) ** 2) / variance + np.log(2 * np.pi * variance))
+                posterior = likelihood + np.log(prior)
+
+                # Appliquer le poids de la rotation
+                weighted_posterior = posterior * (1 - weight * 0.5)
+
+                # Conserver la meilleure probabilité pondérée pour chaque classe
+                if class_name not in posteriors:
+                    posteriors[class_name] = weighted_posterior
+                else:
+                    posteriors[class_name] = max(posteriors[class_name], weighted_posterior)
+
+
+        # Retourner la classe ayant la probabilité maximale
         return max(posteriors, key=posteriors.get)
 
     def save_model(self, model_path):
