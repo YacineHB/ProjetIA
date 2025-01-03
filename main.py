@@ -10,7 +10,7 @@ if __name__ == "__main__":
     pipeline = ObjectDetectionPipeline(image_path)
 
     # Chargement du modèle
-    pipeline.load_model("models/bayesian_model.pth", instance_classifier=BayesianClassifier)  # Modèle entraîné que vous avez sauvegardé
+    pipeline.load_model("models/bayesian_model.pth", instance_classifier=BayesianClassifier())  # Modèle entraîné que vous avez sauvegardé
 
     # Chargement de l'image
     pipeline.load_image()

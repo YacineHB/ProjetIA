@@ -2,7 +2,7 @@
 
 import abc
 
-class Classifier:
+class Classifier(abc.ABC):
 
     def __init__(self):
         pass

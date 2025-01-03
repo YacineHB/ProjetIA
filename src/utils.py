@@ -1,6 +1,3 @@
-from tensorflow.python.ops.metrics_impl import true_positives
-
-
 def evaluate_performance(found_locations, counts):
     """
     Évaluer les performances du système de détection.
@@ -54,6 +51,12 @@ def evaluate_performance(found_locations, counts):
     find = {}
     true = {}
 
+    # Assembler les lettres avec les lettre finisant avec un tiret du bas (ex : A_ avec A)
+    for obj_name in list(counts.keys()):  # Crée une liste des clés pour éviter le problème
+        if obj_name[-1] == "_":
+            base_name = obj_name.split("_")[0]
+            counts[base_name] = counts.get(base_name, 0) + counts.get(obj_name, 0)
+            del counts[obj_name]  # Supprime la clé "_"
 
     for obj_name, detected_count in counts.items():
         true_count = true_counts.get(obj_name, 0)

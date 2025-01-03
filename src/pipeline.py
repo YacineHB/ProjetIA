@@ -15,7 +15,7 @@ class ObjectDetectionPipeline:
         """Charger le modèle pré-entrainé ou le classifieur bayésien."""
         if os.path.exists(model_path):
             # Charger un modèle bayésien si le chemin existe
-            self.model = instance_classifier()  # Créer une instance du classifieur
+            self.model = instance_classifier  # Créer une instance du classifieur
             print(f"Chargement du modèle bayésien depuis {model_path}")
             self.model.load_model(model_path)  # Charger les paramètres du modèle
             print(f"Modèle bayésien chargé depuis {model_path}")
@@ -77,8 +77,6 @@ class ObjectDetectionPipeline:
         """Afficher les résultats de la détection et classification avec la même résolution que l'image d'origine."""
         self.display_image_with_classes(class_counts, detected_objects)
         self.display_image_with_annotations(class_counts, detected_objects)
-
-        print("Les images ont été sauvegardées avec succès.")
 
     def display_image_with_classes(self, class_counts, detected_objects):
         """Afficher l'image avec les classes prédites."""

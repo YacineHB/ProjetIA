@@ -43,7 +43,7 @@ output_folder = "output_characters"  # Dossier racine pour enregistrer les image
 #Cambria font
 font_path = "C:/Windows/Fonts/cambriab.ttf"  # Chemin de la police TrueType
 font_size = 28  # Taille de la police
-image_size = (25, 25)  # Dimensions des images (pixels)
+image_size = (30, 30)  # Dimensions des images (pixels)
 
 # Générer les images
 os.makedirs(output_folder, exist_ok=True)
