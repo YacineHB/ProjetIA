@@ -61,10 +61,9 @@ class ObjectDetectionPipeline:
 
             x, y, w, h = enlarge_contour(cv2.boundingRect(contour), top=15, left=2, right=2)
             letter_image = processed_image[y:y + h, x:x + w]
-            resized_letter = cv2.resize(letter_image, (28, 28))  # Redimensionner à une taille fixe
 
             # Prédiction avec le modèle bayésien
-            predicted_class = self.model.predict(resized_letter)
+            predicted_class = self.model.predict(letter_image)
 
             # Incrémenter le comptage de la classe prédite
             class_counts[predicted_class] += 1
