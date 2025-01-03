@@ -1,9 +1,7 @@
 import cv2
 import os
 from matplotlib import pyplot as plt
-from tensorboard.notebook import display
-
-from src.classifiers.bayesien import BayesianClassifier
+from src.classifiers.abstractclassifier import Classifier
 from src.utils import enlarge_contour
 from collections import defaultdict
 
@@ -13,12 +11,13 @@ class ObjectDetectionPipeline:
         self.image = None
         self.model = model  # Le modèle personnalisé à utiliser
 
-    def load_model(self, model_path):
+    def load_model(self, model_path : str, instance_classifier : Classifier=None):
         """Charger le modèle pré-entrainé ou le classifieur bayésien."""
         if os.path.exists(model_path):
             # Charger un modèle bayésien si le chemin existe
-            self.model = BayesianClassifier()  # Créer une instance du classifieur bayésien
-            self.model.load_model(model_path)  # Charger les paramètres du modèle bayésien
+            self.model = instance_classifier()  # Créer une instance du classifieur
+            print(f"Chargement du modèle bayésien depuis {model_path}")
+            self.model.load_model(model_path)  # Charger les paramètres du modèle
             print(f"Modèle bayésien chargé depuis {model_path}")
         else:
             print(f"Aucun modèle trouvé à {model_path}. Un nouveau modèle sera créé.")

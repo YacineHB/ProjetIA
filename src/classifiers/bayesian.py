@@ -4,10 +4,12 @@ import torch
 import numpy as np
 from collections import defaultdict
 import matplotlib.pyplot as plt
+from src.classifiers.abstractclassifier import Classifier
 
 
-class BayesianClassifier:
+class BayesianClassifier(Classifier):
     def __init__(self):
+        super().__init__()
         self.feature_means = {}
         self.feature_variances = {}
         self.class_priors = {}
@@ -129,28 +131,6 @@ class BayesianClassifier:
             print(f"Model loaded from {model_path}")
         else:
             print(f"Aucun modèle trouvé à {model_path}. Un nouveau modèle sera créé.")
-
-    def test(self, test_path):
-        """Tester le classifieur et calculer la précision."""
-        correct = 0
-        total = 0
-
-        # Parcourir les sous-dossiers du répertoire de test
-        for class_name in os.listdir(test_path):
-            class_folder_path = os.path.join(test_path, class_name)
-            if os.path.isdir(class_folder_path):  # Vérifier si c'est un sous-dossier
-                for img_name in os.listdir(class_folder_path):
-                    img_path = os.path.join(class_folder_path, img_name)
-                    if os.path.isfile(img_path):
-                        image = cv2.imread(img_path)
-                        if image is not None:
-                            predicted_class = self.predict(image)
-                            total += 1
-                            if predicted_class == class_name:
-                                correct += 1
-
-        accuracy = correct / total if total > 0 else 0
-        return accuracy
 
 
     def visualize_model(self):

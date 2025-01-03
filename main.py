@@ -1,5 +1,6 @@
 from src.pipeline import ObjectDetectionPipeline
 from src.utils import evaluate_performance
+from src.classifiers.bayesian import BayesianClassifier
 import time
 
 if __name__ == "__main__":
@@ -9,7 +10,7 @@ if __name__ == "__main__":
     pipeline = ObjectDetectionPipeline(image_path)
 
     # Chargement du modèle
-    pipeline.load_model("models/bayesian_model.pth")  # Modèle entraîné que vous avez sauvegardé
+    pipeline.load_model("models/bayesian_model.pth", instance_classifier=BayesianClassifier)  # Modèle entraîné que vous avez sauvegardé
 
     # Chargement de l'image
     pipeline.load_image()
