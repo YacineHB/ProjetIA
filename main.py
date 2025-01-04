@@ -1,3 +1,4 @@
+from src.classifiers.bayesian import BayesianClassifier
 from src.classifiers.kmean import KMeansClassifier
 from src.pipeline import ObjectDetectionPipeline
 from src.utils import evaluate_performance
@@ -11,7 +12,7 @@ if __name__ == "__main__":
 
     # Chargement du modèle
     # pipeline.load_model("models/bayesian_model.pth")  # Modèle entraîné que vous avez sauvegardé
-    pipeline.load_model("models/kmean_model.pth", KMeansClassifier())
+    pipeline.load_model("models/bayesian_model.pth", BayesianClassifier())
     # Chargement de l'image
     pipeline.load_image()
 

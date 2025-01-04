@@ -13,13 +13,6 @@ class KMeansClassifier(Classifier):
         self.num_clusters = num_clusters
         self.centroids = None
         self.classes = []
-        self.hog = cv2.HOGDescriptor(
-            _winSize=(28, 28),
-            _blockSize=(8, 8),
-            _blockStride=(4, 4),
-            _cellSize=(8, 8),
-            _nbins=9
-        )
 
     def extract_features(self, image):
         """Extraire les caractéristiques HOG d'une image."""

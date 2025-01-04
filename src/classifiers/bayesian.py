@@ -14,13 +14,6 @@ class BayesianClassifier(Classifier):
         self.feature_variances = {}
         self.class_priors = {}
         self.classes = []
-        self.hog = cv2.HOGDescriptor(
-            _winSize=(28, 28),  # Taille de la fenêtre (même que l'image redimensionnée)
-            _blockSize=(8, 8),  # Taille des blocs
-            _blockStride=(4, 4),  # Pas entre les blocs
-            _cellSize=(8, 8),  # Taille des cellules
-            _nbins=9  # Nombre de bins pour l'histogramme des orientations
-        )
 
     def extract_features(self, image):
         """Extraire les caractéristiques HOG d'une image."""
