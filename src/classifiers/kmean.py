@@ -8,11 +8,18 @@ from src.classifiers.abstractclassifier import Classifier
 
 
 class KMeansClassifier(Classifier):
-    def __init__(self, num_clusters=3):
+    def __init__(self, num_clusters=62):
         super().__init__()
         self.num_clusters = num_clusters
         self.centroids = None
         self.classes = []
+        self.hog = cv2.HOGDescriptor(
+            _winSize=(28, 28),
+            _blockSize=(8, 8),
+            _blockStride=(4, 4),
+            _cellSize=(8, 8),
+            _nbins=9
+        )
 
     def extract_features(self, image):
         """Extraire les caractéristiques HOG d'une image."""
@@ -39,29 +46,46 @@ class KMeansClassifier(Classifier):
 
         features = np.array(features)
 
+        # Normalisation pour éviter les problèmes de gradient
         norms = np.linalg.norm(features, axis=1, keepdims=True)
         features = features / np.where(norms > 1e-6, norms, 1)
 
         return features
 
     def initialize_centroids(self, features):
-        """Initialiser les centroïdes aléatoirement à partir des points de données."""
-        indices = torch.randperm(features.size(0))[:self.num_clusters]
-        centroids = features[indices]
-        return centroids
+        """Initialiser les centroïdes avec K-means++."""
+        # Convertir les caractéristiques en un tableau numpy pour une manipulation plus facile
+        features_np = features.numpy()
+        centroids = [features_np[np.random.choice(features_np.shape[0])]]  # Choix aléatoire initial
+
+        for _ in range(1, self.num_clusters):
+            distances = np.min([np.linalg.norm(features_np - c, axis=1) for c in centroids], axis=0)
+            probabilities = distances / distances.sum()
+            new_centroid = features_np[np.random.choice(features_np.shape[0], p=probabilities)]
+            centroids.append(new_centroid)
+
+        # Convertir les centroïdes en tensor PyTorch
+        return torch.tensor(np.array(centroids), dtype=torch.float32)
 
     def assign_clusters(self, features, centroids):
-        """Assigner chaque point au centroid le plus proche."""
+        """Assigner chaque point au centroïde le plus proche."""
         distances = torch.cdist(features, centroids)
         cluster_assignments = torch.argmin(distances, dim=1)
         return cluster_assignments
 
     def update_centroids(self, features, cluster_assignments):
         """Mettre à jour les centroïdes en calculant la moyenne des points assignés à chaque cluster."""
-        centroids = torch.stack([features[cluster_assignments == i].mean(dim=0) for i in range(self.num_clusters)])
-        return centroids
+        centroids = []
+        for i in range(self.num_clusters):
+            cluster_points = features[cluster_assignments == i]
+            if len(cluster_points) == 0:
+                # Réinitialiser le centroïde si le cluster est vide
+                centroids.append(features[torch.randint(0, features.size(0), (1,))])
+            else:
+                centroids.append(cluster_points.mean(dim=0))
+        return torch.stack(centroids)
 
-    def train(self, catalog_path, num_iterations=100):
+    def train(self, catalog_path, num_iterations=100, tol=1e-4):
         """Entraîner le modèle KMeans avec des images de lettres du catalogue."""
         class_features = defaultdict(list)
         total_images = 0
@@ -93,26 +117,45 @@ class KMeansClassifier(Classifier):
         self.centroids = self.initialize_centroids(all_features)
 
         # Effectuer l'algorithme KMeans
-        for _ in range(num_iterations):
+        for iteration in range(num_iterations):
             cluster_assignments = self.assign_clusters(all_features, self.centroids)
-            self.centroids = self.update_centroids(all_features, cluster_assignments)
+            new_centroids = self.update_centroids(all_features, cluster_assignments)
+
+            # Vérifier la convergence
+            centroid_shift = torch.norm(self.centroids - new_centroids, dim=1).max()
+            self.centroids = new_centroids
+            if centroid_shift < tol:
+                print(f"Convergence atteinte après {iteration + 1} itérations.")
+                break
+
+        # Sauvegarder les assignations de clusters pour la visualisation
+        self.labels_ = cluster_assignments  # Enregistrer les étiquettes
+        self.data = all_features  # Enregistrer les données pour la visualisation
 
         print("Centroids calculated and clusters assigned.")
 
+
     def predict(self, image):
         """Prédire la classe d'une image basée sur l'appartenance à un cluster."""
-        features = self.extract_features(image)
+        features = self.extract_features(image)  # Extraire les caractéristiques
         features = torch.tensor(features, dtype=torch.float32)
+
+        # Vérifier que les caractéristiques ne sont pas vides
+        if features.size(0) == 0:
+            raise ValueError("Aucune caractéristique extraite de l'image. Vérifiez les images d'entrée.")
 
         # Assigner les clusters à la nouvelle image
         cluster_assignments = self.assign_clusters(features, self.centroids)
 
-        # Vérifier si cluster_assignments est un tensor avec plus d'un élément
-        if cluster_assignments.dim() > 0:
-            cluster_assignments = cluster_assignments[0]  # Prenez le premier élément si plus d'un cluster est assigné
+        # Si plusieurs points sont assignés, prendre le premier (ou définir une logique différente)
+        if cluster_assignments.dim() > 0 and cluster_assignments.size(0) > 1:
+            print("Plusieurs clusters assignés, en prenant le premier.")
+            cluster_assignment = cluster_assignments[0].item()  # Prenez le premier cluster
+        else:
+            cluster_assignment = cluster_assignments.item()
 
         # Retourner la classe associée au cluster
-        return self.classes[cluster_assignments.item()]
+        return self.classes[cluster_assignment]
 
     def save_model(self, model_path):
         """Sauvegarder les paramètres du modèle avec PyTorch."""
@@ -134,49 +177,33 @@ class KMeansClassifier(Classifier):
             print(f"Aucun modèle trouvé à {model_path}. Un nouveau modèle sera créé.")
 
     def visualize_model(self):
-        """Visualiser les centroïdes des clusters dans un espace 2D avec les noms des classes."""
-        if self.centroids is None or not self.classes:
-            print("Centroids or class names not available for visualization.")
-            return
+        """
+        Visualise les clusters et les centroïdes dans un plan 2D.
+        """
+        if self.centroids is None or not hasattr(self, "labels_"):
+            raise AttributeError("Le modèle doit être entraîné avant toute visualisation.")
 
-        # Centrer les centroïdes pour la réduction dimensionnelle
-        centroids_np = self.centroids.numpy()
-        centroids_centered = centroids_np - np.mean(centroids_np, axis=0)
+        # Projection des données sur les deux premières dimensions
+        X_2d = self.data[:, :2].numpy()  # Utilise les deux premières dimensions
+        centroids_2d = self.centroids[:, :2].numpy()  # Centroides dans les deux premières dimensions
+        labels = self.labels_.numpy()  # Convertir les étiquettes en tableau numpy
 
-        # Calcul de la matrice de covariance
-        covariance_matrix = np.cov(centroids_centered, rowvar=False)
+        # Visualisation des points
+        plt.figure(figsize=(10, 8))
+        for cluster in range(self.num_clusters):
+            cluster_points = X_2d[labels == cluster]
+            plt.scatter(cluster_points[:, 0], cluster_points[:, 1], label=f"Cluster {cluster}", s=10)
 
-        # Calcul des valeurs propres et vecteurs propres
-        eigenvalues, eigenvectors = np.linalg.eigh(covariance_matrix)
+        # Visualisation des centroïdes
+        plt.scatter(
+            centroids_2d[:, 0], centroids_2d[:, 1],
+            color='black', marker='x', s=100, label='Centroids'
+        )
 
-        # Trier par ordre décroissant des valeurs propres
-        sorted_indices = np.argsort(eigenvalues)[::-1]
-        eigenvectors = eigenvectors[:, sorted_indices[:2]]
-
-        # Réduction dimensionnelle à 2 dimensions
-        reduced_centroids = np.dot(centroids_centered, eigenvectors)
-
-        # Visualiser les centroïdes en 2D
-        plt.figure(figsize=(8, 6))
-        plt.scatter(reduced_centroids[:, 0], reduced_centroids[:, 1], c='red', marker='*', s=200, label='Centroids')
-
-        # Annoter avec les noms des classes
-        for i, coord in enumerate(reduced_centroids):
-            class_name = self.classes[i] if i < len(self.classes) else f"Unknown {i}"
-            if class_name[-1] == "_":
-                class_name = class_name.split("_")[0].upper()
-            else:
-                class_name = class_name.lower()
-            plt.text(coord[0], coord[1], class_name, fontsize=12, ha='right')
-
-        plt.title('2D Visualization of Centroids')
-        plt.xlabel('PCA Dimension 1')
-        plt.ylabel('PCA Dimension 2')
-        plt.axhline(0, color='gray', linestyle='--', linewidth=0.5)
-        plt.axvline(0, color='gray', linestyle='--', linewidth=0.5)
-        plt.legend()
+        plt.title("Visualisation des clusters en 2D")
+        plt.xlabel("Dimension 1")
+        plt.ylabel("Dimension 2")
+        plt.legend(loc='best', fontsize='small')
         plt.grid(True)
         plt.show()
-
-
 
