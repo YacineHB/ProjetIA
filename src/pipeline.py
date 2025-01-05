@@ -9,6 +9,7 @@ class ObjectDetectionPipeline:
     def __init__(self, image_path, model=None):
         self.image_path = image_path
         self.image = None
+        self.binary_image = None
         self.model = model  # Le modèle personnalisé à utiliser
 
     def load_model(self, model_path : str, instance_classifier : Classifier=None):
@@ -31,53 +32,66 @@ class ObjectDetectionPipeline:
 
     def preprocess_image(self):
         """Prétraiter l'image pour l'inférence."""
-        # Convertir l'image en niveaux de gris pour la détection de caractéristiques par le classifieur bayésien
-        image_gray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
-        return image_gray
+        # Binairisation de l'image
+        channels = cv2.split(self.image)
+        binary_images = []
+
+        # Seuillage par canal (éviter la perte d'informations de couleur)
+        for channel in channels:
+            _, binary_channel = cv2.threshold(channel, 127, 255, cv2.THRESH_BINARY_INV)
+            binary_images.append(binary_channel)
+
+        # Fusionner les canaux binarisés (ou logique)
+        binary_image = cv2.bitwise_or(binary_images[0], binary_images[1])
+        binary_image = cv2.bitwise_or(binary_image, binary_images[2])
+        return binary_image
 
     def detect_and_classify_objects(self):
-        """Détecter et classer les objets dans l'image à l'aide du modèle."""
+        """Détecter et classer les objets dans l'image en couleur sans conversion en niveaux de gris."""
         if self.model is None:
             print("Aucun modèle de classification fourni.")
             return {}
 
-        # Prétraiter l'image pour l'inférence (conversion en niveaux de gris)
-        processed_image = self.preprocess_image()
-
-        # Seuillage pour binariser l'image (légèrement inversé pour améliorer la détection)
-        _, binary_image = cv2.threshold(processed_image, 127, 255, cv2.THRESH_BINARY_INV)
+        self.binary_image = self.preprocess_image()
 
         # Trouver les contours dans l'image binarisée
-        contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(self.binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         # Dictionnaire pour stocker les comptages des classes détectées
         class_counts = defaultdict(int)
         detected_objects = []
 
         for contour in contours:
-            # Ignorer les petits contours (bruit)
-            if cv2.contourArea(contour) < 50:  # Limiter à des zones suffisamment grandes
+            if cv2.contourArea(contour) < 50:
                 continue
 
             x, y, w, h = enlarge_contour(cv2.boundingRect(contour), top=15, left=2, right=2)
-            letter_image = processed_image[y:y + h, x:x + w]
+            letter_image = self.image[y:y + h, x:x + w]
 
-            # Prédiction avec le modèle bayésien
+            # Prédiction avec le modèle
             predicted_class = self.model.predict(letter_image)
 
             # Incrémenter le comptage de la classe prédite
             class_counts[predicted_class] += 1
 
-            # Ajouter les coordonnées et la classe prédite pour afficher un rectangle plus tard
+            # Ajouter les coordonnées et la classe prédite
             detected_objects.append((x, y, w, h, predicted_class))
 
         return dict(sorted(class_counts.items())), detected_objects
 
     def display_results(self, class_counts, detected_objects):
         """Afficher les résultats de la détection et classification avec la même résolution que l'image d'origine."""
+        self.display_binary_image()
         self.display_image_with_classes(detected_objects)
         self.display_image_with_annotations(detected_objects)
         self.display_classes_count(class_counts)
+
+    def display_binary_image(self):
+        """Afficher l'image binaire."""
+        plt.figure(figsize=(self.binary_image.shape[1] / 100, self.binary_image.shape[0] / 100))
+        plt.imshow(self.binary_image, cmap='gray')
+        plt.axis('off')
+        plt.show()
 
     def display_image_with_classes(self, detected_objects):
         """Afficher l'image avec les classes prédites."""
