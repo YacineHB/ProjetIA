@@ -5,7 +5,7 @@ from src.utils import evaluate_performance
 import time
 
 if __name__ == "__main__":
-    image_path = "data/plans/plan.png"  # Image à traiter
+    image_path = "data/plans/page.png"  # Image à traiter
 
     # Initialisation du pipeline de détection d'objets
     pipeline = ObjectDetectionPipeline(image_path)
