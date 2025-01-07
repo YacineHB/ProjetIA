@@ -121,8 +121,11 @@ class BayesianClassifier(Classifier):
                     posteriors[class_name] = max(posteriors[class_name], weighted_posterior)
 
 
-        # Retourner la classe ayant la probabilité maximale
-        return max(posteriors, key=posteriors.get)
+        # Retourner la classe ayant la probabilité maximale si elle est supérieure à un seuil
+        m = max(posteriors, key=posteriors.get)
+        if posteriors[m] < -100000:
+            return None
+        return m
 
     def save_model(self, model_path):
         """Sauvegarder les paramètres du modèle avec PyTorch."""

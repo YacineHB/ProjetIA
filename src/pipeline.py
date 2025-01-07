@@ -71,11 +71,12 @@ class ObjectDetectionPipeline:
             # Prédiction avec le modèle
             predicted_class = self.model.predict(letter_image)
 
-            # Incrémenter le comptage de la classe prédite
-            class_counts[predicted_class] += 1
+            if predicted_class is not None:
+                # Incrémenter le comptage de la classe prédite
+                class_counts[predicted_class] += 1
 
-            # Ajouter les coordonnées et la classe prédite
-            detected_objects.append((x, y, w, h, predicted_class))
+                # Ajouter les coordonnées et la classe prédite
+                detected_objects.append((x, y, w, h, predicted_class))
 
         return dict(sorted(class_counts.items())), detected_objects
 
