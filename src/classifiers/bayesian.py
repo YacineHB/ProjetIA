@@ -156,13 +156,14 @@ class BayesianClassifier(Classifier):
             print("Aucune classe disponible pour la visualisation.")
             return
 
-        for class_name in self.classes:
-            mean_features = self.feature_means[class_name]
+        #Visualiser les classes sur un graphique plt
+        fig, ax = plt.subplots(1, len(self.classes), figsize=(20, 5))
+        #title
+        fig.suptitle("Moyennes des caractéristiques pour chaque classe", fontsize=16)
 
-            plt.figure(figsize=(10, 4))
-            plt.title(f'Moyenne des caractéristiques pour la classe: {class_name}')
-            plt.plot(mean_features)  # Utiliser numpy pour l'affichage
-            plt.xlabel('Index des caractéristiques')
-            plt.ylabel('Valeur moyenne')
-            plt.grid(True)
-            plt.show()
+        for i, class_name in enumerate(self.classes):
+            mean_image = self.feature_means[class_name].reshape(18, 18)
+            ax[i].imshow(mean_image, cmap="gray")
+            ax[i].set_title(class_name)
+            ax[i].axis("off")
+        plt.show()
