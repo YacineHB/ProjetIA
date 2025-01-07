@@ -1,4 +1,4 @@
-# ProjetIA
+# ProjetIA - Détécteur de texte et de formes
 
 ## Installation des dépendances
 
