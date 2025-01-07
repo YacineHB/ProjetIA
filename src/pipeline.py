@@ -50,7 +50,7 @@ class ObjectDetectionPipeline:
         """Détecter et classer les objets dans l'image en couleur sans conversion en niveaux de gris."""
         if self.model is None:
             print("Aucun modèle de classification fourni.")
-            return {}
+            return None, None
 
         self.binary_image = self.preprocess_image()
 
@@ -82,10 +82,13 @@ class ObjectDetectionPipeline:
 
     def display_results(self, class_counts, detected_objects):
         """Afficher les résultats de la détection et classification avec la même résolution que l'image d'origine."""
-        self.display_binary_image()
-        self.display_image_with_classes(detected_objects)
-        self.display_image_with_annotations(detected_objects)
-        self.display_classes_count(class_counts)
+        try:
+            self.display_binary_image()
+            self.display_image_with_classes(detected_objects)
+            self.display_image_with_annotations(detected_objects)
+            self.display_classes_count(class_counts)
+        except Exception as e:
+            print(f"Une erreur s'est produite lors de l'affichage des résultats : {e}")
 
     def display_binary_image(self):
         """Afficher l'image binaire."""

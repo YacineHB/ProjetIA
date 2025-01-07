@@ -1,36 +1,42 @@
 from src.classifiers.bayesian import BayesianClassifier
-from src.classifiers.kmean import KMeansClassifier
+from src.classifiers.kmeans import KMeansClassifier
 from src.pipeline import ObjectDetectionPipeline
 from src.utils import evaluate_performance
 import time
 
-if __name__ == "__main__":
-    image_path = "data/plans/page.png"  # Image à traiter
+image_path = "data/plans/page.png" # Choisir le chemin de l'image
+model_path = "models/bayesian_model.pth" # Choisir le chemin du modèle
+type_classifier = "bayesian" # Choisir entre "bayesian" et "kmeans"
 
-    # Initialisation du pipeline de détection d'objets
+if __name__ == "__main__":
+
+    classifier = None
+
+    if type_classifier == "bayesian":
+        classifier = BayesianClassifier()
+    elif type_classifier == "kmeans":
+        classifier = KMeansClassifier()
+
     pipeline = ObjectDetectionPipeline(image_path)
 
-    # Chargement du modèle
-    # pipeline.load_model("models/bayesian_model.pth")  # Modèle entraîné que vous avez sauvegardé
-    pipeline.load_model("models/bayesian_model.pth", BayesianClassifier())
-    # Chargement de l'image
+    pipeline.load_model(model_path, classifier)
+
     pipeline.load_image()
 
-    # Mesure de la performance avant la détection
     start_time = time.time()
 
-    # Détection et classification des objets dans l'image
     class_counts, detected_objects = pipeline.detect_and_classify_objects()
 
-    # Mesure du temps d'exécution
     end_time = time.time()
+
     print(f"Temps d'exécution: {end_time - start_time} secondes")
 
-    # Affichage des résultats
     print("Comptage des objets :", class_counts)
-    # Affichage des objets détectés
-    print("Objets détectés :", len(detected_objects))
+
+    counts_detected = 0
+    if detected_objects is not None : counts_detected = len(detected_objects)
+    print("Objets détectés :", counts_detected)
+
     pipeline.display_results(class_counts, detected_objects)
 
-    # Évaluation de la performance (précision, rappel, etc.)
     evaluate_performance(class_counts, class_counts)

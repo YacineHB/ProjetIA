@@ -58,13 +58,12 @@ class BayesianClassifier(Classifier):
         class_features = defaultdict(list)
         total_images = 0
 
-        # Parcourir les sous-dossiers du catalogue (chaque sous-dossier correspond à une classe)
         for class_name in os.listdir(catalog_path):
             class_folder_path = os.path.join(catalog_path, class_name)
-            if os.path.isdir(class_folder_path):  # Vérifier si c'est un sous-dossier
+            if os.path.isdir(class_folder_path):
                 if class_name not in self.classes:
                     self.classes.append(class_name)
-                # Parcourir les fichiers dans le sous-dossier de la classe
+
                 for img_name in os.listdir(class_folder_path):
                     img_path = os.path.join(class_folder_path, img_name)
                     if os.path.isfile(img_path):
@@ -75,30 +74,28 @@ class BayesianClassifier(Classifier):
                                 class_features[class_name].append(feature)
                             total_images += 1
 
-        # Calcul des moyennes, variances et des priorités
         for class_name in self.classes:
-            if class_name in class_features:  # Assurez-vous que des images existent pour la classe
-                features = np.array(class_features[class_name])  # Convertir en array numpy
+            if class_name in class_features:
+                features = np.array(class_features[class_name])
                 self.feature_means[class_name] = np.mean(features, axis=0)
-                self.feature_variances[class_name] = np.var(features, axis=0) + 1e-6  # Eviter la division par zéro
+                self.feature_variances[class_name] = np.var(features, axis=0) + 1e-6
                 self.class_priors[class_name] = len(features) / total_images
 
         print("Classes entraînées ou mises à jour :", self.classes)
 
     def predict(self, image):
         """Prédire la classe d'une image en fonction des caractéristiques extraites."""
-        # Poids des rotations
         rotation_weights = {
-            0: 1.0,  # Importance maximale pour l'angle 0
-            90: 0.5,  # Réduction de poids pour les autres angles
+            0: 1.0,
+            90: 0.5
             180: 0.5,
             270: 0.5
-        }
+        } # Poids des rotations pour améliorer la robustesse
 
         posteriors = {}
 
-        for rotation, weight in rotation_weights.items():  # Parcourir les rotations et leurs poids
-            k = rotation // 90  # Convertir degrés en nombre de rotations pour np.rot90
+        for rotation, weight in rotation_weights.items():
+            k = rotation // 90
             rotated_image = np.rot90(image, k)
             features = self.extract_features(rotated_image)
 
@@ -107,21 +104,17 @@ class BayesianClassifier(Classifier):
                 variance = self.feature_variances[class_name]
                 prior = self.class_priors[class_name]
 
-                # Calculer la vraisemblance logarithmique (log de la densité gaussienne)
                 likelihood = -0.5 * np.sum(((features - mean) ** 2) / variance + np.log(2 * np.pi * variance))
                 posterior = likelihood + np.log(prior)
 
-                # Appliquer le poids de la rotation
                 weighted_posterior = posterior * (1 - weight * 0.5)
 
-                # Conserver la meilleure probabilité pondérée pour chaque classe
                 if class_name not in posteriors:
                     posteriors[class_name] = weighted_posterior
                 else:
                     posteriors[class_name] = max(posteriors[class_name], weighted_posterior)
 
 
-        # Retourner la classe ayant la probabilité maximale si elle est supérieure à un seuil
         m = max(posteriors, key=posteriors.get)
         if posteriors[m] < -100000:
             return None
@@ -159,7 +152,6 @@ class BayesianClassifier(Classifier):
             print("Aucune classe disponible pour la visualisation.")
             return
 
-        #Visualiser les classes sur un graphique plt
         fig, ax = plt.subplots(1, len(self.classes), figsize=(20, 5))
         #title
         fig.suptitle("Moyennes des caractéristiques pour chaque classe", fontsize=16)

@@ -12,7 +12,7 @@ class Classifier(abc.ABC):
             _blockStride=(4, 4),  # Pas entre les blocs
             _cellSize=(8, 8),  # Taille des cellules
             _nbins=9  # Nombre de bins pour l'histogramme des orientations
-        )
+        ) #Descripteur HOG
 
     @abc.abstractmethod
     def train(self, catalog_path):

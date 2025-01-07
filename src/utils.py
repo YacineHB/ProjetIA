@@ -51,25 +51,28 @@ def evaluate_performance(found_locations, counts):
     find = {}
     true = {}
 
-    # Assembler les lettres avec les lettre finisant avec un tiret du bas (ex : A_ avec A)
-    for obj_name in list(counts.keys()):  # Crée une liste des clés pour éviter le problème
-        if obj_name[-1] == "_":
-            base_name = obj_name.split("_")[0]
-            counts[base_name] = counts.get(base_name, 0) + counts.get(obj_name, 0)
-            del counts[obj_name]  # Supprime la clé "_"
+    try:
+        # Assembler les lettres avec les lettre finisant avec un tiret du bas (ex : A_ avec A)
+        for obj_name in list(counts.keys()):  # Crée une liste des clés pour éviter le problème
+            if obj_name[-1] == "_":
+                base_name = obj_name.split("_")[0]
+                counts[base_name] = counts.get(base_name, 0) + counts.get(obj_name, 0)
+                del counts[obj_name]  # Supprime la clé "_"
 
-    for obj_name, detected_count in counts.items():
-        true_count = true_counts.get(obj_name, 0)
-        true[obj_name] = true_count
-        find[obj_name] = detected_count
+        for obj_name, detected_count in counts.items():
+            true_count = true_counts.get(obj_name, 0)
+            true[obj_name] = true_count
+            find[obj_name] = detected_count
 
-        precision[obj_name] = detected_count / (
-                    detected_count + max(0, true_count - detected_count)) if detected_count > 0 else 0
-        recall[obj_name] = detected_count / true_count if true_count > 0 else 0
+            precision[obj_name] = detected_count / (
+                        detected_count + max(0, true_count - detected_count)) if detected_count > 0 else 0
+            recall[obj_name] = detected_count / true_count if true_count > 0 else 0
 
-    print("Précision et Rappel :")
-    for obj_name in counts:
-        print(f"{obj_name}: Précision={precision.get(obj_name, 0)}, Rappel={recall.get(obj_name, 0)}, Find={find.get(obj_name,0)}, Vrai={true.get(obj_name, 0)}")
+        print("Précision et Rappel :")
+        for obj_name in counts:
+            print(f"{obj_name}: Précision={precision.get(obj_name, 0)}, Rappel={recall.get(obj_name, 0)}, Find={find.get(obj_name,0)}, Vrai={true.get(obj_name, 0)}")
+    except Exception as e:
+        print(f"Erreur lors de l'évaluation des performances : {e}")
 
 def enlarge_contour(dimension, top=0, bottom=0, left=0, right=0):
     """
