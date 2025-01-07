@@ -87,7 +87,7 @@ class BayesianClassifier(Classifier):
         """Prédire la classe d'une image en fonction des caractéristiques extraites."""
         rotation_weights = {
             0: 1.0,
-            90: 0.5
+            90: 0.5,
             180: 0.5,
             270: 0.5
         } # Poids des rotations pour améliorer la robustesse
@@ -153,7 +153,7 @@ class BayesianClassifier(Classifier):
             return
 
         fig, ax = plt.subplots(1, len(self.classes), figsize=(20, 5))
-        #title
+
         fig.suptitle("Moyennes des caractéristiques pour chaque classe", fontsize=16)
 
         for i, class_name in enumerate(self.classes):

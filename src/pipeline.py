@@ -32,16 +32,13 @@ class ObjectDetectionPipeline:
 
     def preprocess_image(self):
         """Prétraiter l'image pour l'inférence."""
-        # Binairisation de l'image
         channels = cv2.split(self.image)
         binary_images = []
 
-        # Seuillage par canal (éviter la perte d'informations de couleur)
         for channel in channels:
             _, binary_channel = cv2.threshold(channel, 127, 255, cv2.THRESH_BINARY_INV)
             binary_images.append(binary_channel)
 
-        # Fusionner les canaux binarisés (ou logique)
         binary_image = cv2.bitwise_or(binary_images[0], binary_images[1])
         binary_image = cv2.bitwise_or(binary_image, binary_images[2])
         return binary_image
@@ -54,10 +51,8 @@ class ObjectDetectionPipeline:
 
         self.binary_image = self.preprocess_image()
 
-        # Trouver les contours dans l'image binarisée
         contours, _ = cv2.findContours(self.binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        # Dictionnaire pour stocker les comptages des classes détectées
         class_counts = defaultdict(int)
         detected_objects = []
 
@@ -65,17 +60,14 @@ class ObjectDetectionPipeline:
             if cv2.contourArea(contour) < 50:
                 continue
 
-            x, y, w, h = enlarge_contour(cv2.boundingRect(contour), top=15, left=2, right=2)
+            x, y, w, h = enlarge_contour(cv2.boundingRect(contour), top=15, left=2, right=2, bottom=2)
             letter_image = self.image[y:y + h, x:x + w]
 
-            # Prédiction avec le modèle
             predicted_class = self.model.predict(letter_image)
 
             if predicted_class is not None:
-                # Incrémenter le comptage de la classe prédite
                 class_counts[predicted_class] += 1
 
-                # Ajouter les coordonnées et la classe prédite
                 detected_objects.append((x, y, w, h, predicted_class))
 
         return dict(sorted(class_counts.items())), detected_objects
@@ -99,64 +91,51 @@ class ObjectDetectionPipeline:
 
     def display_image_with_classes(self, detected_objects):
         """Afficher l'image avec les classes prédites."""
-        image_with_classes_only = self.image.copy()  # Copie de l'image d'origine
+        image_with_classes_only = self.image.copy()
 
-        # Boucle sur les objets détectés pour afficher les rectangles et les textes
         for (x, y, w, h, predicted_class) in detected_objects:
-            # Vérifier si la classe prédite a "_" à la fin
             if predicted_class[-1] == "_":
                 text = predicted_class.split("_")[0].upper()
             else:
                 text = predicted_class.lower()
 
-            # --- Pour l'image avec seulement les classes ---
-            # Effacer l'ancienne lettre en remplissant la région avec du blanc (ou autre couleur de fond)
             cv2.rectangle(image_with_classes_only, (x, y), (x + w, y + h), (255, 255, 255), -1)
 
-            # Calculer la position pour centrer le texte dans la région de la lettre
             font_scale = 0.7
             font_thickness = 2
             text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_thickness)[0]
             text_x = x + (w - text_size[0]) // 2
             text_y = y + (h + text_size[1]) // 2
 
-            # Ajouter le texte de la classe prédite
             cv2.putText(image_with_classes_only, text, (text_x, text_y),
                         cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 0, 0), font_thickness)
 
-        # Affichage de l'image avec les classes à la même résolution que l'image originale
         fig = plt.figure(figsize=(image_with_classes_only.shape[1] / 100, image_with_classes_only.shape[0] / 100))
         plt.imshow(cv2.cvtColor(image_with_classes_only, cv2.COLOR_BGR2RGB))
-        plt.axis('off')  # Désactiver les axes
-        plt.show()  # Afficher l'image
+        plt.axis('off')
+        plt.show()
 
     def display_image_with_annotations(self, detected_objects):
         """Afficher l'image avec les annotations (rectangles et textes)."""
-        image_with_annotations = self.image.copy()  # Copie de l'image d'origine
+        image_with_annotations = self.image.copy()
         for (x, y, w, h, predicted_class) in detected_objects:
-            # Vérifier si la classe prédite a "_" à la fin
             if predicted_class[-1] == "_":
                 text = predicted_class.split("_")[0].upper()
             else:
                 text = predicted_class.lower()
 
-            # --- Pour l'image avec annotations ---
-            # Dessiner le rectangle autour de la lettre détectée
             cv2.rectangle(image_with_annotations, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-            # Ajouter le texte à côté de la lettre
             cv2.putText(image_with_annotations, text, (x, y - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
 
-        # Affichage de l'image avec les annotations à la même résolution que l'image originale
-        fig = plt.figure(figsize=(image_with_annotations.shape[1] / 100, image_with_annotations.shape[0] / 100))
+        plt.figure(figsize=(image_with_annotations.shape[1] / 100, image_with_annotations.shape[0] / 100))
         plt.imshow(cv2.cvtColor(image_with_annotations, cv2.COLOR_BGR2RGB))
-        plt.axis('off')  # Désactiver les axes
-        plt.show()  # Afficher l'image
+        plt.axis('off')
+        plt.show()
 
     def display_classes_count(self, class_counts):
         """Afficher le nombre d'objets détectés par classe."""
-        # afficher les classes prédites et le nombre de fois qu'elles apparaissent
         plt.figure(figsize=(10, 5))
         plt.bar(class_counts.keys(), class_counts.values())
         plt.xlabel("Classes")
