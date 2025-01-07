@@ -1,9 +1,15 @@
 from src.classifiers.bayesian import BayesianClassifier
 from src.classifiers.kmeans import KMeansClassifier
+import sys
 
 catalog_path = "data/catalogue" # Choisir le chemin du catalogue
-model_path = "models/bayesian_model.pth" # Choisir le chemin du modèle
-classifier_type = "bayesian" # Choisir entre "bayesian" et "kmeans"
+model_path = "models/kmeans_model.pth" # Choisir le chemin du modèle
+classifier_type = "kmeans" # Choisir entre "bayesian" et "kmeans"
+
+if len(sys.argv) > 1:
+    catalog_path = sys.argv[1]
+    model_path = sys.argv[2]
+    classifier_type = sys.argv[3]
 
 if __name__ == "__main__":
 
